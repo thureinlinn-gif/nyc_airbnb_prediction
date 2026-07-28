@@ -52,12 +52,16 @@ Before building any model, I explored the data to understand its shape and quali
 **📷 Screenshot — Class Distribution (high vs. low price):**
 
 <!-- Paste your class distribution bar chart screenshot below -->
-![Class Distribution](screenshots/class_distribution.png)
+<img width="586" height="475" alt="image" src="https://github.com/user-attachments/assets/6a704a81-a763-4a0d-b5ae-c47ca374b908" />
+
+
 
 **📷 Screenshot — Bedrooms by Price Category (box plot):**
 
 <!-- Paste your bedrooms box plot screenshot below -->
-![Bedrooms by Price Category](screenshots/bedrooms_boxplot.png)
+<img width="556" height="395" alt="image" src="https://github.com/user-attachments/assets/50f8ed8b-eb33-4261-b392-3b928bba54ca" />
+
+
 
 ---
 
@@ -90,12 +94,14 @@ I trained and compared **two different approaches** to the same problem:
 **📷 Screenshot — Model Coefficients (what drives price):**
 
 <!-- Paste your Logistic Regression coefficients screenshot below -->
-![Model Coefficients](screenshots/coefficients.png)
+<img width="716" height="555" alt="image" src="https://github.com/user-attachments/assets/02a75bf9-9cb3-40ed-bb47-033ddce0d494" />
+
 
 **📷 Screenshot — Neural Network Training Curves (Loss & Accuracy over epochs):**
 
 <!-- Paste your training/validation loss and accuracy plots below -->
-![Training Curves](screenshots/training_curves.png)
+<img width="662" height="728" alt="image" src="https://github.com/user-attachments/assets/248d054b-ef73-4ef7-ab10-bedeb0babd91" />
+
 
 ---
 
@@ -111,7 +117,8 @@ Both models were tested on unseen data. Here's how they compared:
 **📷 Screenshot — Results Comparison Table:**
 
 <!-- Paste your side-by-side results table screenshot below -->
-![Results Comparison](screenshots/results_table.png)
+<img width="560" height="126" alt="image" src="https://github.com/user-attachments/assets/a0993b0c-0255-4246-a0b6-48a49503ec99" />
+
 
 **What this means:**
 - The **neural network performed slightly better** on both measures.
