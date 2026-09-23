@@ -1,0 +1,13 @@
+# Python / Jupyter
+__pycache__/
+.ipynb_checkpoints/
+.venv/
+venv/
+
+# The zip is a duplicate of the CSV
+Airbnb/archive.zip
+
+# OS / editor files
+.DS_Store
+Thumbs.db
+.vscode/

@@ -1,20 +1,26 @@
-# 🏙️ Airbnb NYC Price Prediction — Machine Learning Capstone
+# 🏙️ Airbnb NYC Price Prediction
 
-A machine-learning project that predicts whether a New York City Airbnb listing is **high-priced** or **low-priced**, and uncovers the key factors that drive a listing's price.
+A machine-learning project that predicts whether a New York City Airbnb listing is **high-priced** or **low-priced**, and shows which factors drive a listing's price.
+
+**Best result:** a neural network reached **83.8% accuracy and an F1 score of 0.63** on unseen listings, compared with a 74.9% baseline that finds no high-price listings at all.
+
+👉 **[Open the notebook](airbnb_price_prediction.ipynb)** to see all the code, charts and results step by step.
 
 ---
 
 ## 📌 Overview
 
-Airbnb hosts often struggle to know if their listing is priced correctly. This project builds a tool that looks at a listing's features — like location, room type, and size — and predicts whether it falls into the **high-price** or **low-price** group.
+Airbnb hosts often don't know whether their listing is priced correctly. This project looks at a listing's features, such as location, room type, size and reviews, and predicts whether it belongs in the **high-price** or **low-price** group.
 
 The goal is to help hosts:
 - Price their rentals competitively
-- Spot listings that are priced too high or too low
-- Understand what most increases a listing's value
+- Spot listings that look priced too high or too low
+- Understand what raises a listing's value the most
 
-**Dataset:** 28,000+ Airbnb listings in New York City, with 51 attributes per listing.
+**Dataset:** public New York City Airbnb listings from 2024 (originally from [Inside Airbnb](https://insideairbnb.com/)): 20,758 listings with 22 columns each.
 **Type of problem:** Binary classification (high price vs. low price).
+
+> I first built a version of this project as my Break Through Tech AI/ML capstone, using a dataset the program provided. I then rebuilt it on my own with a newer, messier public 2024 dataset. That meant writing new cleaning code, creating the label myself, adding a baseline, tuning for class imbalance, and improving the neural network with dropout and early stopping.
 
 ---
 
@@ -27,127 +33,138 @@ The goal is to help hosts:
 | **Visualization** | Matplotlib, Seaborn |
 | **Machine learning** | scikit-learn (Logistic Regression, GridSearchCV) |
 | **Deep learning** | TensorFlow / Keras (Neural Network) |
+| **Environment** | Jupyter Notebook |
 
 ---
 
 ## ❓ The Problem
 
-- **What we predict:** Whether a listing is `high` price or `low` price.
-- **How "high price" is defined:** A listing is labeled **high** if its price is at or above the 75th percentile (the top 25% most expensive listings); otherwise it is **low**.
-- **Why it matters:** A reliable price-tier predictor helps hosts set competitive prices and helps a rental company advise its clients on what drives listing value.
+- **What I predict:** Whether a listing is **high price (1)** or **low price (0)**.
+- **How "high price" is defined:** The dataset only has the raw nightly price, so I created the label myself. A listing is **high** if its price is at or above the **75th percentile ($198/night)**, meaning the top 25% most expensive listings. Everything else is **low**.
+- **Why it matters:** A reliable price-tier predictor helps hosts set competitive prices and shows what drives a listing's value.
 
 ---
 
-## 🔎 Step 1: Exploring the Data
+## 🧹 Steps 1–3: Load, Clean and Label the Data
 
-Before building any model, I explored the data to understand its shape and quality.
+The raw data needed work before any model could use it:
+
+| Problem in the raw data | What I did |
+|---|---|
+| `rating` stored as text, with `"No rating"` for new listings | Converted to a number, added a `has_rating` 0/1 flag, filled the blanks with the median |
+| `bedrooms` stored as text, with `"Studio"` | Treated a studio as **0 bedrooms** |
+| `baths` had `"Not specified"` | Converted to a number and filled the blanks with the median |
+| `license` had thousands of different license numbers | Turned it into a simple `has_license` 0/1 flag |
+| `last_review` was a date | Turned it into `days_since_last_review`, a rough measure of how active a listing is |
+| Extreme prices (for example $100,000/night) | Removed the top 1% of prices (above $999) and any $0 listings |
+
+After cleaning, **20,560 listings** remained. I then created the `high_price` label using the $198 cutoff.
+
+---
+
+## 🔎 Step 4: Exploring the Data
 
 **Key findings:**
-- The dataset had **28,022 listings** and **51 columns**.
-- The label was **mildly imbalanced** — about **75% low-price** and **25% high-price** listings.
-- Some columns (`host_response_rate`, `host_acceptance_rate`) were missing for ~40% of listings, so they were removed.
-- A few columns had extreme outliers (e.g., one host had 3,387 listings).
-- High-price listings tended to have **more bedrooms** than low-price listings.
+- The label is **imbalanced**: about **75% low-price** (15,400) and **25% high-price** (5,160) listings.
+- **Location matters a lot.** 34% of Manhattan listings are high-price, compared with 24% in Brooklyn, 14% in Queens, 11% in Staten Island and 9% in the Bronx.
+- **Room type matters.** 60% of hotel rooms and 37% of entire homes/apartments are high-price, compared with only 10% of private rooms.
+- High-price listings tend to have **more bedrooms**.
 
-**📷 Screenshot — Class Distribution (high vs. low price):**
+**Step 4a: Class Distribution**
 
-<!-- Paste your class distribution bar chart screenshot below -->
-<img width="586" height="475" alt="image" src="https://github.com/user-attachments/assets/6a704a81-a763-4a0d-b5ae-c47ca374b908" />
+![Class Distribution](screenshots/class_distribution.png)
 
+**Step 4b: Bedrooms by Price Category**
 
+![Bedrooms by Price Category](screenshots/bedrooms_boxplot.png)
 
-**📷 Screenshot — Bedrooms by Price Category (box plot):**
+**Step 4c: High-Price Share by Borough and Room Type**
 
-<!-- Paste your bedrooms box plot screenshot below -->
-<img width="556" height="395" alt="image" src="https://github.com/user-attachments/assets/50f8ed8b-eb33-4261-b392-3b928bba54ca" />
-
-
+![High-Price Share](screenshots/high_price_share.png)
 
 ---
 
-## 🧹 Step 2: Preparing the Data
+## 🧰 Step 5: Preparing the Data for the Models
 
-To get the data ready for modeling, I:
-- Converted the price label into numbers (**high = 1, low = 0**).
-- **Removed** free-text and ID columns (like `name` and `host_about`) that don't help prediction.
-- **Removed** columns with too many missing values (~40% missing).
-- **Removed the raw price column** to avoid "data leakage" — since the label was created from price, keeping it would let the model cheat.
-- **Filled in** the few remaining missing values (`bedrooms`, `beds`) with the median.
-- **One-hot encoded** categories like `room_type` and neighborhood into numeric columns.
-- **Scaled** the features so no single column dominates just because its numbers are larger.
+- **Removed** ID and free-text columns (`id`, `name`, `host_id`, `host_name`) that don't help the model generalize.
+- **Removed** `neighbourhood` (200+ small areas) and kept the **borough** plus **latitude/longitude** for location.
+- **Removed the raw `price` column** to avoid **data leakage**. The label was created from price, so keeping it would let the model cheat.
+- **One-hot encoded** `room_type` and borough into 0/1 columns, for **24 features** in total.
+- **Split** the data 80% training (16,448 rows) / 20% testing (4,112 rows), keeping the same high/low ratio in both parts.
+- **Scaled** the features so that columns with big numbers don't outweigh the others. The scaler learned only from the training data.
 
 ---
 
-## 🤖 Step 3: Building the Models
+## 🤖 Steps 6–8: Building the Models
 
-I trained and compared **two different approaches** to the same problem:
+### Step 6: Baseline (always guess "low")
+Because 75% of listings are low-price, a "model" that always answers "low" is already 75% accurate but never finds a single high-price listing. Any real model has to beat this.
 
-### Model 1 — Logistic Regression (traditional machine learning)
-- Simple, fast, and easy to explain.
-- Tuned using **GridSearchCV** to find the best settings.
-- Its coefficients clearly show *why* a listing is priced high or low.
+### Step 7: Logistic Regression (traditional machine learning)
+- Simple, fast and easy to explain.
+- Tuned with **GridSearchCV** (5-fold cross-validation, scored on F1) over:
+  - `C`: how strict the model is
+  - `class_weight`: whether to give the smaller high-price group extra weight
+- Best settings: `C = 10`, `class_weight = "balanced"`.
+- Its coefficients show *why* a listing is predicted high or low.
 
-### Model 2 — Neural Network (deep learning, TensorFlow/Keras)
-- 2 hidden layers (64 and 32 units), trained for 100 epochs.
-- More complex, but better at catching the smaller "high-price" group.
+**Step 7c: What Drives a High Price (Logistic Regression coefficients)**
 
-**📷 Screenshot — Model Coefficients (what drives price):**
+![Model Coefficients](screenshots/coefficients.png)
 
-<!-- Paste your Logistic Regression coefficients screenshot below -->
-<img width="716" height="555" alt="image" src="https://github.com/user-attachments/assets/02a75bf9-9cb3-40ed-bb47-033ddce0d494" />
+### Step 8: Neural Network (deep learning, TensorFlow/Keras)
+- 2 hidden layers (64 and 32 units, ReLU) plus **Dropout (20%)** to reduce overfitting.
+- **Adam** optimizer with **early stopping**. Training stops when the validation loss stops improving and keeps the best version of the model.
 
+**Step 8b: Neural Network Training Curves**
 
-**📷 Screenshot — Neural Network Training Curves (Loss & Accuracy over epochs):**
-
-<!-- Paste your training/validation loss and accuracy plots below -->
-<img width="662" height="728" alt="image" src="https://github.com/user-attachments/assets/248d054b-ef73-4ef7-ab10-bedeb0babd91" />
-
+![Training Curves](screenshots/training_curves.png)
 
 ---
 
-## 📊 Step 4: Results
+## 📊 Step 9: Results
 
-Both models were tested on unseen data. Here's how they compared:
+All models were tested on the same 20% of listings that they never saw during training:
 
-| Metric | Logistic Regression | Neural Network |
+| Model | Accuracy | F1 Score |
 |---|---|---|
-| **Accuracy** | 82.1% | **84.8%** |
-| **F1 Score** | 0.594 | **0.658** |
+| Baseline (always "low") | 74.9% | 0.000 |
+| Logistic Regression (default) | 80.7% | 0.512 |
+| Logistic Regression (tuned) | 74.7% | 0.594 |
+| **Neural Network** | **83.8%** | **0.632** |
 
-**📷 Screenshot — Results Comparison Table:**
-
-<!-- Paste your side-by-side results table screenshot below -->
-<img width="560" height="126" alt="image" src="https://github.com/user-attachments/assets/a0993b0c-0255-4246-a0b6-48a49503ec99" />
-
+![Model Comparison](screenshots/results_comparison.png)
 
 **What this means:**
-- The **neural network performed slightly better** on both measures.
-- **Accuracy** = how often the model was right overall (~85%).
-- **F1 score** = a balanced measure of how well the model catches the harder-to-predict high-price listings.
+- **Accuracy** is how often the model was right overall. On its own it can mislead here, because the baseline already gets 75%.
+- **F1 score** measures how well the model finds the harder, smaller high-price group, so it is the more important number for this problem.
+- **Tuning Logistic Regression with balanced class weights raised F1 from 0.51 to 0.59.** It now catches many more high-price listings, but it also raises more false alarms, which is why its accuracy fell. That's a real trade-off, not a free improvement.
+- The **neural network was best on both metrics.** It can learn patterns that a straight-line model can't, such as the way latitude and longitude combine to mark expensive areas.
 
 ---
 
-## 💡 Step 5: Key Takeaways
+## 💡 Key Takeaways
 
-- Features like **more bedrooms**, **higher guest capacity**, **entire-home listings**, and **Manhattan location** pushed listings toward the **high-price** group.
-- The **neural network** was the stronger performer, but only by a modest margin.
-- **Recommendation:** For real-world use, I would recommend **Logistic Regression** for this client — it was nearly as accurate, trains almost instantly, and its results are easy to explain to hosts. If catching every high-price listing were critical, the neural network would be the better choice.
+- **More bedrooms, beds and baths**, **entire-home listings**, **Manhattan location** and **higher ratings** push a listing toward the high-price group.
+- **Private rooms**, **Staten Island/Brooklyn locations** and **long minimum stays** push toward the low-price group.
+- **Recommendation:** Use the **neural network** when accuracy matters most. Use **Logistic Regression** when hosts need a clear explanation of *why* their listing is priced the way it is, because it trains almost instantly and its coefficients are easy to read.
 
 ---
 
 ## ⚖️ Ethical Considerations
 
-- Neighborhood data can act as a stand-in for race or income, since NYC neighborhoods are often divided along those lines — so the model could unintentionally learn location-based bias.
-- Hosts in lower-income neighborhoods are most at risk: if their listings are repeatedly predicted as "low price," they may underprice and earn less.
-- Any real deployment should be checked for fairness across neighborhoods before use.
+- Neighborhood and location data can act as a stand-in for race or income, because NYC neighborhoods are often divided along those lines. The model could therefore learn location-based bias.
+- Hosts in lower-income boroughs are most at risk. If their listings keep being labeled "low price," they may underprice and earn less.
+- Any real deployment should be checked for fairness across boroughs before use.
 
 ---
 
 ## 🚀 What I'd Do Next
 
-- Address the class imbalance using **class weights** or **resampling** to improve the F1 score.
-- Further tune the neural network (different layers, units, and learning rates).
-- Test additional features and preprocessing steps.
+- Extract more features from the listing `name` text (for example "luxury" or "loft").
+- Group the 200+ small `neighbourhood` values into useful clusters instead of dropping them.
+- Try tree-based models (Random Forest, Gradient Boosting), which often do well on this kind of table data.
+- Predict the **actual price** (regression) instead of only high or low.
 
 ---
 
@@ -155,25 +172,23 @@ Both models were tested on unseen data. Here's how they compared:
 
 | File | Description |
 |---|---|
-| `Capstone.ipynb` | Full Jupyter notebook with code, charts, and written analysis |
-| `capstone.py` | Clean, code-only Python version of the project |
-| `data_capstone/airbnbListingsData.csv` | The Airbnb NYC listings dataset |
-| `README.md` | This file |
+| `airbnb_price_prediction.ipynb` | **Main file.** Jupyter notebook with every step, chart and result |
+| `airbnb_price_prediction.py` | The same code as a plain Python script, to run everything at once |
+| `Airbnb/new_york_listings_2024.csv` | The NYC Airbnb 2024 dataset |
+| `screenshots/` | Charts used in this README (saved automatically when the code runs) |
+| `requirements.txt` | Python libraries needed |
 
 ---
 
 ## ▶️ How to Run
 
-1. Make sure the dataset is in the `data_capstone` folder.
-2. Install the required libraries:
+1. Install the required libraries:
    ```
-   pip install pandas numpy matplotlib seaborn scikit-learn tensorflow
+   pip install -r requirements.txt
    ```
-3. Run the notebook (`Capstone.ipynb`) or the script:
+2. **Option A: step by step (recommended).** Open `airbnb_price_prediction.ipynb` in VS Code or Jupyter and run the cells from top to bottom.
+3. **Option B: all at once.**
    ```
-   python capstone.py
+   python airbnb_price_prediction.py
    ```
-
----
-
-*This project was completed as part of the Break Through Tech Machine Learning program.*
+   Results print in the terminal and the charts are saved in the `screenshots/` folder.
